@@ -35,27 +35,28 @@ release.properties
 dependency-reduced-pom.xml
 buildNumber.properties
 
-# IDE - Eclipse
+# IDE files
+## Eclipse
 .apt_generated
 .classpath
 .factorypath
 .project
-.settings
+.settings/
 .springBeans
 .sts4-cache
 bin/
 
-# IDE - IntelliJ IDEA
+## IntelliJ IDEA
 .idea/
 *.iws
 *.iml
 *.ipr
 
-# IDE - VS Code
+## VS Code
 .vscode/
 *.code-workspace
 
-# IDE - NetBeans
+## NetBeans
 /nbproject/private/
 /nbbuild/
 /dist/
@@ -63,8 +64,19 @@ bin/
 /.nb-gradle/
 build/
 
-# Operating System
+## Other IDE files
+*.sublime-workspace
+*.sublime-project
+.cursor/
+*.mdc
+
+# Operating System files
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
 Thumbs.db
 
 # Application specific
@@ -72,9 +84,15 @@ application-local.properties
 application-local.yml
 .env
 *.env.local
+**/src/main/resources/application.properties
+**/src/test/resources/application.properties
 
-# Docker
+# Infrastructure
+## Docker
 .docker/
+postgres-data/
+kafka-logs/
+zookeeper-data/
 
 # Temporary files
 *.tmp
@@ -82,18 +100,13 @@ application-local.yml
 *.swp
 *~.nib
 local.properties
+*.LCK*
+*~
 
 # Spring Boot
 spring-test/
 spring-*/docs/
 spring-*/build/
-
-# Kafka
-kafka-logs/
-zookeeper-data/
-
-# PostgreSQL
-postgres-data/
 
 # Test coverage reports
 coverage/
@@ -104,4 +117,9 @@ htmlcov/
 node_modules/
 npm-debug.log
 yarn-debug.log
-yarn-error.log 
+yarn-error.log
+
+# Database files
+*.sqlite
+*.db
+*.h2.db 

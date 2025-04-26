@@ -10,92 +10,174 @@ The system consists of two microservices:
 
 ### System Flow
 
+#### 1. Transaction Generation Flow
+
+```mermaid
+flowchart LR
+    subgraph TG["Transaction Generator Service"]
+        direction TB
+        A[("⏰ Scheduler")]
+        B["🔄 TransactionGenerator"]
+        C["📝 Transaction Builder"]
+        D["📤 Kafka Producer"]
+        
+        A -->|"@Scheduled"| B
+        B -->|"generate()"| C
+        C -->|"build()"| D
+    end
+
+    subgraph KF["Apache Kafka"]
+        direction TB
+        E["📫 transactions topic"]
+    end
+
+    D -->|"send()"| E
+
+    %% Styling
+    classDef scheduler fill:#ffcdd2,stroke:#c62828
+    classDef generator fill:#e1f5fe,stroke:#0288d1
+    classDef builder fill:#e8f5e9,stroke:#2e7d32
+    classDef producer fill:#fff3e0,stroke:#ef6c00
+    classDef kafka fill:#e3f2fd,stroke:#1565c0
+    
+    class A scheduler
+    class B generator
+    class C builder
+    class D producer
+    class E kafka
+    class TG generator
+    class KF kafka
+```
+
+#### 2. Transaction Processing Flow
+
+```mermaid
+flowchart LR
+    subgraph KF["Apache Kafka"]
+        direction TB
+        E["📫 transactions topic"]
+    end
+
+    subgraph TP["Transaction Processor Service"]
+        direction TB
+        F["📥 Kafka Consumer"]
+        G["🔄 TransactionConsumer"]
+        H["💾 JPA Repository"]
+    end
+
+    subgraph DB["PostgreSQL Database"]
+        direction TB
+        I[("🗄️ transactions")]
+    end
+
+    E -->|"consume()"| F
+    F -->|"@KafkaListener"| G
+    G -->|"save()"| H
+    H -->|"persist()"| I
+
+    %% Styling
+    classDef kafka fill:#e3f2fd,stroke:#1565c0
+    classDef consumer fill:#fff3e0,stroke:#ef6c00
+    classDef processor fill:#e1f5fe,stroke:#0288d1
+    classDef repository fill:#e8f5e9,stroke:#2e7d32
+    classDef database fill:#f3e5f5,stroke:#4a148c
+
+    class E kafka
+    class F consumer
+    class G processor
+    class H repository
+    class I database
+    class KF kafka
+    class TP processor
+    class DB database
+```
+
+#### 3. Data Model
+
+```mermaid
+classDiagram
+    class Transaction {
+        +Long id
+        +UUID transactionId
+        +UUID orderId
+        +String customerId
+        +Double amount
+        +Currency currency
+        +PaymentMethod paymentMethod
+        +TransactionStatus status
+        +Long timestamp
+    }
+
+    class Currency {
+        <<enumeration>>
+        USD
+        EUR
+        GBP
+        INR
+    }
+
+    class PaymentMethod {
+        <<enumeration>>
+        CREDIT_CARD
+        DEBIT_CARD
+        UPI
+        NET_BANKING
+    }
+
+    class TransactionStatus {
+        <<enumeration>>
+        PENDING
+        PROCESSING
+        COMPLETED
+        FAILED
+    }
+
+    Transaction --> Currency
+    Transaction --> PaymentMethod
+    Transaction --> TransactionStatus
+```
+
+#### 4. Error Handling & Monitoring
+
 ```mermaid
 flowchart TB
-    %% Transaction Generator Service
-    subgraph TG["Transaction Generator Service"]
-        A[TransactionGenerator]
-        B[Generate Random Transaction]
-        C[Transaction Model]
-        D[Kafka Producer]
-        A -->|"@Scheduled"| B
-        B -->|"Create"| C
-        C -->|"Send"| D
+    subgraph EH["Error Handling"]
+        direction TB
+        A["❌ Exception Handler"]
+        B["🔄 Retry Policy"]
+        C["📝 Error Logger"]
+        
+        A -->|"handle"| B
+        A -->|"log"| C
+        B -->|"retry"| A
     end
 
-    %% Kafka
-    subgraph KF["Apache Kafka"]
-        E[Transactions Topic]
-        D -->|"Publish"| E
+    subgraph MT["Monitoring"]
+        direction TB
+        D["📊 Metrics Collector"]
+        E["📈 Performance Monitor"]
+        F["🔍 Health Check"]
+        
+        D --> E
+        D --> F
     end
 
-    %% Transaction Processor Service
-    subgraph TP["Transaction Processor Service"]
-        F[Kafka Consumer]
-        G[TransactionConsumer]
-        H[JPA Repository]
-        I[(PostgreSQL)]
-        E -->|"Subscribe"| F
-        F -->|"@KafkaListener"| G
-        G -->|"Persist"| H
-        H -->|"SQL"| I
-    end
+    %% Styling
+    classDef error fill:#ffcdd2,stroke:#c62828
+    classDef retry fill:#fff3e0,stroke:#ef6c00
+    classDef logger fill:#e1f5fe,stroke:#0288d1
+    classDef metrics fill:#e8f5e9,stroke:#2e7d32
+    classDef monitor fill:#f3e5f5,stroke:#7b1fa2
+    classDef health fill:#fff3e0,stroke:#ef6c00
 
-    %% Transaction Data Model
-    subgraph DM["Data Model: Transaction"]
-        J[Transaction Entity]
-        K[Fields]
-        J --- K
-        K --> K1["id (Long)"]
-        K --> K2["transactionId (UUID)"]
-        K --> K3["orderId (UUID)"]
-        K --> K4["customerId (String)"]
-        K --> K5["amount (Double)"]
-        K --> K6["currency (Enum)"]
-        K --> K7["timestamp (Long)"]
-        K --> K8["paymentMethod (Enum)"]
-        K --> K9["status (Enum)"]
-    end
-
-    %% Error Handling & Monitoring
-    subgraph EH["Error Handling & Monitoring"]
-        O[Error Handler]
-        P[Logs]
-        Q[Metrics]
-        G -->|"Exception"| O
-        O -->|"Write"| P
-        O -->|"Retry"| G
-        G -->|"Collect"| Q
-    end
-
-    %% Configuration
-    subgraph CF["Configuration"]
-        M[application.yml]
-        N1["Kafka Config"]
-        N2["PostgreSQL Config"]
-        N3["App Config"]
-        M --> N1
-        M --> N2
-        M --> N3
-    end
-
-    %% Database Optimization
-    subgraph DB["Database Optimization"]
-        I --> L1["Index: user_id"]
-        I --> L2["Index: transaction_time"]
-        I --> L3["Index: status"]
-    end
-
-    %% Style definitions
-    classDef service fill:#e1f5fe,stroke:#01579b
-    classDef database fill:#e8f5e9,stroke:#2e7d32
-    classDef config fill:#fff3e0,stroke:#ef6c00
-    classDef error fill:#ffebee,stroke:#c62828
-
-    class TG,TP service
-    class KF,I database
-    class CF config
+    class A error
+    class B retry
+    class C logger
+    class D metrics
+    class E monitor
+    class F health
     class EH error
+    class MT metrics
 ```
 
 ### Key Features

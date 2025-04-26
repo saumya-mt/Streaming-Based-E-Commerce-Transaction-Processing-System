@@ -1,0 +1,113 @@
+version: '3.8'
+
+services:
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.3.0
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2181:2181"
+
+  kafka:
+    image: confluentinc/cp-kafka:7.3.0
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+
+  postgres:
+    image: postgres:14-alpine
+    environment:
+      POSTGRES_DB: ecommerce
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+  prometheus:
+    image: prom/prometheus:v2.37.0
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+
+  grafana:
+    image: grafana/grafana:9.0.0
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - grafana_data:/var/lib/grafana
+
+  transaction-generator:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: ecommerce/transaction-generator
+    depends_on:
+      - kafka
+    environment:
+      - SPRING_PROFILES_ACTIVE=local
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:29092
+    command: ["java", "-jar", "/app/transaction-generator.jar"]
+    ports:
+      - "8081:8080"
+
+  transaction-processor:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: ecommerce/transaction-processor
+    depends_on:
+      - kafka
+      - postgres
+      - redis
+    environment:
+      - SPRING_PROFILES_ACTIVE=local
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:29092
+      - POSTGRES_HOST=postgres
+      - REDIS_HOST=redis
+    command: ["java", "-jar", "/app/transaction-processor.jar"]
+    ports:
+      - "8082:8080"
+
+  api-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: ecommerce/api-service
+    depends_on:
+      - postgres
+      - redis
+    environment:
+      - SPRING_PROFILES_ACTIVE=local
+      - POSTGRES_HOST=postgres
+      - REDIS_HOST=redis
+    command: ["java", "-jar", "/app/api-service.jar"]
+    ports:
+      - "8080:8080"
+
+volumes:
+  postgres_data:
+  redis_data:
+  prometheus_data:
+  grafana_data: 

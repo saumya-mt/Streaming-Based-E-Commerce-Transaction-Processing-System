@@ -1,0 +1,47 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: 'transaction-generator'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['transaction-generator:8080']
+    scrape_interval: 5s
+
+  - job_name: 'transaction-processor'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['transaction-processor:8080']
+    scrape_interval: 5s
+
+  - job_name: 'api-service'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['api-service:8080']
+    scrape_interval: 5s
+
+  - job_name: 'kafka'
+    static_configs:
+      - targets: ['kafka:9092']
+    scrape_interval: 10s
+
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis:6379']
+    scrape_interval: 10s
+
+  - job_name: 'postgres'
+    static_configs:
+      - targets: ['postgres:5432']
+    scrape_interval: 10s
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          # alertmanager:9093
+
+rule_files:
+  # - "first_rules.yml"
+  # - "second_rules.yml" 
